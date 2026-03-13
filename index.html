@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Récurrence de Poincaré — Simulation Interactive</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0a0a0f;
+  --bg-panel: #111118;
+  --bg-card: #1a1a24;
+  --accent: #6ee7b7;
+  --accent-dim: #2d6a54;
+  --accent-glow: rgba(110, 231, 183, 0.15);
+  --text: #e8e8ed;
+  --text-dim: #8888a0;
+  --text-muted: #55556a;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --border: rgba(255,255,255,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(110,231,183,0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 50%, rgba(167,139,250,0.03) 0%, transparent 50%);
+  animation: drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(-3%, 2%) rotate(2deg); }
+}
+
+.hero h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+}
+
+.hero h1 span {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.hero p {
+  margin-top: 1.5rem;
+  color: var(--text-dim);
+  font-size: 1.15rem;
+  max-width: 600px;
+  position: relative;
+  z-index: 1;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); }
+  50% { opacity: 1; transform: translateX(-50%) translateY(5px); }
+}
+
+/* ── Sections ── */
+section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+
+h2 .num {
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  margin-right: 0.75rem;
+  vertical-align: middle;
+}
+
+p + p { margin-top: 1rem; }
+
+.highlight {
+  background: var(--accent-glow);
+  border-left: 3px solid var(--accent);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.highlight strong { color: var(--accent); font-style: normal; }
+
+/* ── Simulation Panel ── */
+.sim-section {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+
+.sim-container {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.sim-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sim-header h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.sim-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  background: rgba(110,231,183,0.05);
+}
+
+.btn.active {
+  background: var(--accent);
+  color: var(--bg-deep);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--bg-deep);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-accent:hover {
+  background: #5dd4a6;
+}
+
+.sim-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  min-height: 500px;
+}
+
+@media (max-width: 768px) {
+  .sim-body { grid-template-columns: 1fr; }
+  .sim-sidebar { border-left: none; border-top: 1px solid var(--border); }
+}
+
+.sim-canvas-wrap {
+  position: relative;
+  background: var(--bg-deep);
+}
+
+canvas#simCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sim-sidebar {
+  border-left: 1px solid var(--border);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: var(--bg-panel);
+}
+
+.stat-block {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+.stat-value.orange { color: var(--orange); }
+.stat-value.blue { color: var(--blue); }
+.stat-value.purple { color: var(--purple); }
+
+.stat-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.slider-group label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-group label span {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Timeline ── */
+.timeline {
+  position: relative;
+  margin: 2rem 0;
+  padding-left: 2rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent), var(--purple), var(--text-muted));
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 2.5rem;
+  padding-left: 1.5rem;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 0.5rem;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-deep);
+  transform: translateX(-4px);
+}
+
+.timeline-item:nth-child(2)::before { background: var(--blue); }
+.timeline-item:nth-child(3)::before { background: var(--orange); }
+.timeline-item:nth-child(4)::before { background: var(--red); }
+
+.timeline-item h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.timeline-item:nth-child(2) h4 { color: var(--blue); }
+.timeline-item:nth-child(3) h4 { color: var(--orange); }
+.timeline-item:nth-child(4) h4 { color: var(--red); }
+
+.timeline-item p {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* ── Analogy Cards ── */
+.analogy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+}
+
+.analogy-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+}
+
+.analogy-card:hover {
+  border-color: var(--accent-dim);
+  transform: translateY(-2px);
+}
+
+.analogy-card .icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.analogy-card h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.analogy-card p {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  margin-top: 4rem;
+}
+
+footer a { color: var(--accent); text-decoration: none; }
+
+/* ── Language Toggle ── */
+.lang-toggle {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 100;
+  display: flex;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  padding: 0.4rem 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lang-btn.active {
+  background: var(--accent);
+  color: var(--bg-deep);
+  font-weight: 600;
+}
+
+.lang-btn:hover:not(.active) {
+  color: var(--text);
+}
+
+/* ── Split Comparison ── */
+.split-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 2rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
+  .split-compare { grid-template-columns: 1fr; }
+}
+
+.split-side {
+  padding: 2rem;
+  position: relative;
+}
+
+.split-side.thermo {
+  background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(245,158,11,0.04));
+  border-right: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
+  .split-side.thermo { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+.split-side.statmech {
+  background: linear-gradient(135deg, rgba(110,231,183,0.06), rgba(96,165,250,0.04));
+}
+
+.split-side h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.split-side.thermo h4 { color: var(--orange); }
+.split-side.statmech h4 { color: var(--accent); }
+
+.split-side p { color: var(--text-dim); font-size: 0.95rem; }
+.split-side p + p { margin-top: 0.75rem; }
+
+.split-tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.split-side.thermo .split-tag {
+  background: rgba(245,158,11,0.15);
+  color: var(--orange);
+}
+
+.split-side.statmech .split-tag {
+  background: rgba(110,231,183,0.15);
+  color: var(--accent);
+}
+
+.split-side ul {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.split-side ul li {
+  padding: 0.4rem 0;
+  padding-left: 1.2rem;
+  position: relative;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.split-side ul li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--text-muted);
+}
+
+/* ── Entropy Timeline ── */
+.entropy-timeline-wrap {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.entropy-timeline-wrap h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+canvas#entropyTimeline {
+  width: 100%;
+  height: 220px;
+  display: block;
+  border-radius: 8px;
+}
+
+.timeline-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Debate Section ── */
+.debate-grid {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: 0;
+  align-items: start;
+  margin: 2rem 0;
+}
+
+@media (max-width: 700px) {
+  .debate-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .debate-vs { display: none; }
+}
+
+.debate-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.debate-card h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.debate-card .years {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.debate-card p {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.debate-card .quote {
+  border-left: 2px solid var(--purple);
+  padding-left: 1rem;
+  margin: 1rem 0 0;
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.debate-card.zermelo h4 { color: var(--orange); }
+.debate-card.boltzmann h4 { color: var(--accent); }
+
+.debate-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-top: 2rem;
+}
+
+.resolution-box {
+  background: linear-gradient(135deg, rgba(167,139,250,0.08), rgba(110,231,183,0.06));
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 12px;
+  padding: 1.75rem;
+  margin: 2rem 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LANGUAGE TOGGLE ═══════ -->
+<div class="lang-toggle">
+  <button class="lang-btn active" id="langFr">FR</button>
+  <button class="lang-btn" id="langEn">EN</button>
+</div>
+
+<!-- ═══════ HERO ═══════ -->
+<div class="hero">
+  <h1 data-i18n="hero_title">La <span>Récurrence</span> de Poincaré</h1>
+  <p data-i18n="hero_sub">Quand la physique dit que l'impossible est simplement extraordinairement improbable. Une exploration interactive de la mécanique statistique.</p>
+  <div class="scroll-hint" data-i18n="scroll_hint">↓ Défiler pour explorer</div>
+</div>
+
+<!-- ═══════ SECTION 1: LE CONCEPT ═══════ -->
+<section>
+  <h2><span class="num">01</span><span data-i18n="s1_title">Le Théorème</span></h2>
+  <p data-i18n="s1_p1">En 1890, Henri Poincaré démontre un résultat surprenant : dans un système mécanique <strong>isolé</strong> et <strong>conservatif</strong> (énergie constante, volume de l'espace des phases fini), le système reviendra arbitrairement proche de son état initial, si l'on attend suffisamment longtemps.</p>
+  <p data-i18n="s1_p2">Autrement dit : mélangez un jeu de cartes au hasard des milliards de milliards de fois, et un jour, l'ordre initial réapparaîtra.</p>
+
+  <div class="highlight">
+    <span data-i18n="s1_highlight"><strong>Condition cruciale :</strong> le système doit être parfaitement isolé. Aucune particule ne s'échappe, aucune énergie n'entre ni ne sort. Dans le monde réel, presque rien ne satisfait cette condition.</span>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 2: SIMULATION ═══════ -->
+<div class="sim-section">
+  <div class="sim-container">
+    <div class="sim-header">
+      <h3 data-i18n="sim_title">Simulation de particules</h3>
+      <div class="sim-controls">
+        <button class="btn btn-accent" id="btnStart" data-i18n-btn="btn_start">▶ Lancer</button>
+        <button class="btn" id="btnReset" data-i18n-btn="btn_reset">↺ Réinitialiser</button>
+        <button class="btn" id="btnRelease" data-i18n-btn="btn_release">🔓 Ouvrir la boîte</button>
+      </div>
+    </div>
+    <div class="sim-body">
+      <div class="sim-canvas-wrap">
+        <canvas id="simCanvas"></canvas>
+      </div>
+      <div class="sim-sidebar">
+        <div class="slider-group">
+          <label><span data-i18n="label_particles">Particules</span> <span id="particleCountLabel">30</span></label>
+          <input type="range" id="particleSlider" min="5" max="80" value="30">
+        </div>
+
+        <div class="stat-block">
+          <div class="stat-label" data-i18n="stat_steps">Étapes écoulées</div>
+          <div class="stat-value" id="stepCount">0</div>
+        </div>
+
+        <div class="stat-block">
+          <div class="stat-label" data-i18n="stat_entropy">Entropie (dispersion)</div>
+          <div class="stat-value orange" id="entropyVal">0.00</div>
+          <div class="stat-sub" data-i18n="stat_entropy_sub">0 = ordre parfait / 1 = dispersion max</div>
+        </div>
+
+        <div class="stat-block">
+          <div class="stat-label" data-i18n="stat_distance">Distance à l'état initial</div>
+          <div class="stat-value blue" id="distVal">0.00</div>
+          <div class="stat-sub" data-i18n="stat_distance_sub">Somme des écarts normalisée</div>
+        </div>
+
+        <div class="stat-block">
+          <div class="stat-label" data-i18n="stat_best">Meilleur retour</div>
+          <div class="stat-value purple" id="bestReturn">--</div>
+          <div class="stat-sub" id="bestReturnPct"></div>
+        </div>
+
+        <div class="stat-block" id="flashBlock" style="transition: background 0.4s;">
+          <div class="stat-label" data-i18n="stat_proximity">Proximité à l'état initial</div>
+          <div style="background: var(--bg-deep); border-radius:6px; height:10px; margin-top:6px; overflow:hidden;">
+            <div id="proximityBar" style="height:100%; width:0%; background: var(--accent); border-radius:6px; transition: width 0.15s;"></div>
+          </div>
+          <div class="stat-sub" style="margin-top:4px;"><span id="proximityPct">0</span><span data-i18n="stat_similarity">% de similarité</span></div>
+        </div>
+
+        <div class="stat-block">
+          <div class="stat-label" data-i18n="stat_state">État</div>
+          <div class="stat-value" id="stateLabel" style="font-size:0.95rem; color: var(--text-dim);" data-i18n-dynamic="state_waiting">En attente</div>
+        </div>
+
+        <div class="stat-block" style="flex:1; min-height:100px;">
+          <div class="stat-label" data-i18n="stat_history">Historique de proximité</div>
+          <canvas id="graphCanvas" style="width:100%; height:80px; display:block; margin-top:6px;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SECTION 3: ÉCHELLES DE TEMPS ═══════ -->
+<section>
+  <h2><span class="num">02</span><span data-i18n="s2_title">Des temps inconcevables</span></h2>
+  <p data-i18n="s2_intro">Le théorème garantit le retour, mais ne dit rien sur le <em>quand</em>. Pour un système macroscopique, les temps de récurrence dépassent toute mesure humaine.</p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4 data-i18n="t1_title">~10 particules → quelques secondes</h4>
+      <p data-i18n="t1_text">Un tout petit système peut revenir proche de son état initial en un temps observable. C'est ce que la simulation ci-dessus montre.</p>
+    </div>
+    <div class="timeline-item">
+      <h4 data-i18n="t2_title">~100 particules → ~10⁵⁰ années</h4>
+      <p data-i18n="t2_text">Déjà avec cent particules, le temps de récurrence dépasse l'âge de l'univers d'un facteur inimaginable.</p>
+    </div>
+    <div class="timeline-item">
+      <h4 data-i18n="t3_title">Un verre d'eau (~10²⁵ molécules) → ~10^(10²⁵) années</h4>
+      <p data-i18n="t3_text">Un nombre si grand qu'il a lui-même des milliards de milliards de chiffres. Il n'existe pas de métaphore suffisante.</p>
+    </div>
+    <div class="timeline-item">
+      <h4 data-i18n="t4_title">Un véhicule (~10²⁸ atomes) → au-delà de tout</h4>
+      <p data-i18n="t4_text">Le temps nécessaire pour qu'un véhicule décomposé se reconstitue spontanément dans une boîte isolée dépasse toute échelle. L'univers aura depuis longtemps cessé d'exister sous sa forme actuelle.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 4: L'ÉTAT INITIAL ═══════ -->
+<section>
+  <h2><span class="num">03</span><span data-i18n="s3_title">La question de l'état initial</span></h2>
+  <p data-i18n="s3_intro">Un point subtil mais essentiel : le théorème dit que le système revient <strong>là où il a commencé</strong>, pas qu'il s'organise spontanément en quelque chose de nouveau.</p>
+
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <div class="icon">🚗</div>
+      <h4 data-i18n="card1_title">Véhicule intact → Décomposition → Véhicule intact</h4>
+      <p data-i18n="card1_text">Si l'état initial est le véhicule assemblé, le théorème prédit un retour à cet état. La décomposition est une étape intermédiaire.</p>
+    </div>
+    <div class="analogy-card">
+      <div class="icon">⛏️</div>
+      <h4 data-i18n="card2_title">Matières premières → ? → Matières premières</h4>
+      <p data-i18n="card2_text">Si on part d'un tas de fer et de pétrole brut, le système revient à ce tas. Il ne formera pas spontanément un véhicule qui n'a jamais existé dans sa trajectoire.</p>
+    </div>
+    <div class="analogy-card">
+      <div class="icon">🎯</div>
+      <h4 data-i18n="card3_title">Le principe clé</h4>
+      <p data-i18n="card3_text">La récurrence <strong>restaure</strong> l'ordre passé. Elle ne <strong>crée</strong> pas d'ordre nouveau. Le retour dépend entièrement du point de départ choisi.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 5: ENTROPIE ═══════ -->
+<section>
+  <h2><span class="num">04</span><span data-i18n="s4_title">Entropie : loi statistique, pas absolue</span></h2>
+  <p data-i18n="s4_p1">La deuxième loi de la thermodynamique stipule que l'entropie d'un système isolé ne peut qu'augmenter. Mais c'est une loi <strong>statistique</strong> : elle décrit ce qui se passe dans l'écrasante majorité des cas, pas dans la totalité.</p>
+  <p data-i18n="s4_p2">Le théorème de Poincaré montre qu'il existe des moments (extraordinairement rares) où l'entropie diminue spontanément. Ce n'est pas une violation des lois physiques, c'est leur conséquence la plus extrême.</p>
+
+  <div class="highlight">
+    <span data-i18n="s4_highlight"><strong>Analogie :</strong> Imaginez que vous lanciez un dé un milliard de fois. La loi des grands nombres dit que chaque face apparaîtra environ 1/6 du temps. Mais il n'est pas <em>impossible</em> d'obtenir un milliard de six d'affilée. C'est juste si improbable que la distinction avec « impossible » n'a aucune signification pratique.</span>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 5: SPLIT COMPARISON ═══════ -->
+<section>
+  <h2><span class="num">05</span><span data-i18n="s5_title">Deux visions de l'entropie</span></h2>
+  <p data-i18n="s5_intro">Le même phénomène, l'augmentation de l'entropie, est décrit par deux cadres théoriques qui semblent se contredire. Pourtant, ils sont tous deux corrects, chacun à son échelle.</p>
+
+  <div class="split-compare">
+    <div class="split-side thermo">
+      <div class="split-tag" data-i18n="split_thermo_tag">Thermodynamique classique</div>
+      <h4 data-i18n="split_thermo_title">L'entropie croît. Point final.</h4>
+      <p data-i18n="split_thermo_p1">La deuxième loi est une loi <strong>absolue</strong>. L'entropie d'un système isolé ne diminue jamais. Les processus irréversibles le sont véritablement.</p>
+      <ul>
+        <li data-i18n="split_thermo_li1">Loi macroscopique, déterministe</li>
+        <li data-i18n="split_thermo_li2">Pas de retour possible</li>
+        <li data-i18n="split_thermo_li3">Flèche du temps absolue</li>
+        <li data-i18n="split_thermo_li4">Formulée par Clausius (1850)</li>
+      </ul>
+    </div>
+    <div class="split-side statmech">
+      <div class="split-tag" data-i18n="split_stat_tag">Mécanique statistique</div>
+      <h4 data-i18n="split_stat_title">L'entropie croît... probablement.</h4>
+      <p data-i18n="split_stat_p1">La deuxième loi est une loi <strong>statistique</strong>. L'entropie augmente dans l'immense majorité des cas, mais des fluctuations et des retours sont techniquement possibles.</p>
+      <ul>
+        <li data-i18n="split_stat_li1">Loi microscopique, probabiliste</li>
+        <li data-i18n="split_stat_li2">Retour possible (Poincaré)</li>
+        <li data-i18n="split_stat_li3">Flèche du temps statistique</li>
+        <li data-i18n="split_stat_li4">Formulée par Boltzmann (1870s)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 6: ENTROPY TIMELINE ═══════ -->
+<section>
+  <h2><span class="num">06</span><span data-i18n="s6_title">Où les théories divergent</span></h2>
+  <p data-i18n="s6_intro">À court terme, les deux cadres font les mêmes prédictions. C'est aux échelles de temps extrêmes que la différence apparaît.</p>
+
+  <div class="entropy-timeline-wrap">
+    <h4 data-i18n="s6_graph_title">Entropie en fonction du temps (échelle logarithmique)</h4>
+    <canvas id="entropyTimeline"></canvas>
+    <div class="timeline-legend">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--orange);"></div><span data-i18n="s6_legend_thermo">Thermodynamique classique</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div><span data-i18n="s6_legend_stat">Mécanique statistique (réalité)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--purple);"></div><span data-i18n="s6_legend_poincare">Récurrence de Poincaré</span></div>
+    </div>
+  </div>
+
+  <div class="highlight">
+    <span data-i18n="s6_highlight"><strong>Point clé :</strong> Les deux théories sont identiques pour tout usage pratique. La divergence n'apparaît qu'à des échelles de temps qui dépassent l'existence de l'univers. C'est pourquoi la thermodynamique classique reste parfaitement valide pour l'ingénierie, la chimie, et la vie quotidienne.</span>
+  </div>
+</section>
+
+<!-- ═══════ SECTION 7: HISTORICAL DEBATE ═══════ -->
+<section>
+  <h2><span class="num">07</span><span data-i18n="s7_title">Le débat Zermelo-Boltzmann</span></h2>
+  <p data-i18n="s7_intro">Cette tension théorique a provoqué l'un des débats les plus célèbres de la physique du XIXe siècle.</p>
+
+  <div class="debate-grid">
+    <div class="debate-card zermelo">
+      <h4>Ernst Zermelo</h4>
+      <div class="years" data-i18n="s7_zermelo_years">Objection de 1896</div>
+      <p data-i18n="s7_zermelo_text">Utilise le théorème de Poincaré pour attaquer la théorie cinétique de Boltzmann. Si tout système revient à son état initial, alors l'augmentation de l'entropie ne peut pas être une loi fondamentale. La mécanique est réversible, donc la thermodynamique irréversible est incompatible avec elle.</p>
+      <div class="quote" data-i18n="s7_zermelo_quote">« Un processus irréversible est incompatible avec la mécanique. »</div>
+    </div>
+    <div class="debate-vs">vs</div>
+    <div class="debate-card boltzmann">
+      <h4>Ludwig Boltzmann</h4>
+      <div class="years" data-i18n="s7_boltzmann_years">Réponse de 1896</div>
+      <p data-i18n="s7_boltzmann_text">Reconnaît que Zermelo a raison mathématiquement, mais argue que c'est physiquement insignifiant. Le temps de récurrence est si astronomique qu'aucun observateur ne le verra jamais. La deuxième loi est statistiquement vraie, ce qui suffit pour toute application pratique.</p>
+      <div class="quote" data-i18n="s7_boltzmann_quote">« Vous devriez attendre longtemps avant d'observer une telle chose. »</div>
+    </div>
+  </div>
+
+  <div class="resolution-box">
+    <h4 style="font-family: 'Cormorant Garamond', serif; color: var(--purple); margin-bottom: 0.5rem;" data-i18n="s7_resolution_title">La résolution moderne</h4>
+    <p style="color: var(--text-dim); font-size: 0.95rem;" data-i18n="s7_resolution_text">Aujourd'hui, la physique reconnaît que <strong>les deux avaient raison</strong>. Zermelo avait raison sur le plan mathématique : la récurrence est un théorème. Boltzmann avait raison sur le plan physique : les temps de récurrence sont si colossaux qu'ils n'ont aucune pertinence observable. La deuxième loi de la thermodynamique est comprise comme une vérité statistique extraordinairement fiable, pas comme un absolu métaphysique.</p>
+  </div>
+</section>
+
+<footer>
+  <span data-i18n="footer">Récurrence de Poincaré — Simulation éducative</span>
+</footer>
+
+<script>
+// ════════════════════════════════════════
+//  I18N — TRANSLATIONS
+// ════════════════════════════════════════
+let currentLang = 'fr';
+
+const i18n = {
+  fr: {
+    hero_title: 'La <span>Récurrence</span> de Poincaré',
+    hero_sub: 'Quand la physique dit que l\'impossible est simplement extraordinairement improbable. Une exploration interactive de la mécanique statistique.',
+    scroll_hint: '↓ Défiler pour explorer',
+    s1_title: 'Le Théorème',
+    s1_p1: 'En 1890, Henri Poincaré démontre un résultat surprenant : dans un système mécanique <strong>isolé</strong> et <strong>conservatif</strong> (énergie constante, volume de l\'espace des phases fini), le système reviendra arbitrairement proche de son état initial, si l\'on attend suffisamment longtemps.',
+    s1_p2: 'Autrement dit : mélangez un jeu de cartes au hasard des milliards de milliards de fois, et un jour, l\'ordre initial réapparaîtra.',
+    s1_highlight: '<strong>Condition cruciale :</strong> le système doit être parfaitement isolé. Aucune particule ne s\'échappe, aucune énergie n\'entre ni ne sort. Dans le monde réel, presque rien ne satisfait cette condition.',
+    sim_title: 'Simulation de particules',
+    btn_start: '▶ Lancer',
+    btn_start_pause: '⏸ Pause',
+    btn_start_resume: '▶ Reprendre',
+    btn_reset: '↺ Réinitialiser',
+    btn_release: '🔓 Ouvrir la boîte',
+    btn_recall: '↩ Rappeler dans le cercle',
+    btn_release_done: 'Boîte ouverte ✓',
+    label_particles: 'Particules',
+    stat_steps: 'Étapes écoulées',
+    stat_entropy: 'Entropie (dispersion)',
+    stat_entropy_sub: '0 = ordre parfait / 1 = dispersion max',
+    stat_distance: 'Distance à l\'état initial',
+    stat_distance_sub: 'Somme des écarts normalisée',
+    stat_best: 'Meilleur retour',
+    stat_proximity: 'Proximité à l\'état initial',
+    stat_similarity: '% de similarité',
+    stat_state: 'État',
+    stat_history: 'Historique de proximité',
+    state_waiting: 'En attente',
+    state_initial: 'Ordre initial — immobiles',
+    state_paused: 'En pause',
+    state_confined: 'Confinées dans le cercle',
+    state_dispersed: 'Dispersées dans la boîte',
+    similarity_label: 'Similarité : ',
+    canvas_label: 'État initial',
+    s2_title: 'Des temps inconcevables',
+    s2_intro: 'Le théorème garantit le retour, mais ne dit rien sur le <em>quand</em>. Pour un système macroscopique, les temps de récurrence dépassent toute mesure humaine.',
+    t1_title: '~10 particules → quelques secondes',
+    t1_text: 'Un tout petit système peut revenir proche de son état initial en un temps observable. C\'est ce que la simulation ci-dessus montre.',
+    t2_title: '~100 particules → ~10⁵⁰ années',
+    t2_text: 'Déjà avec cent particules, le temps de récurrence dépasse l\'âge de l\'univers d\'un facteur inimaginable.',
+    t3_title: 'Un verre d\'eau (~10²⁵ molécules) → ~10^(10²⁵) années',
+    t3_text: 'Un nombre si grand qu\'il a lui-même des milliards de milliards de chiffres. Il n\'existe pas de métaphore suffisante.',
+    t4_title: 'Un véhicule (~10²⁸ atomes) → au-delà de tout',
+    t4_text: 'Le temps nécessaire pour qu\'un véhicule décomposé se reconstitue spontanément dans une boîte isolée dépasse toute échelle. L\'univers aura depuis longtemps cessé d\'exister sous sa forme actuelle.',
+    s3_title: 'La question de l\'état initial',
+    s3_intro: 'Un point subtil mais essentiel : le théorème dit que le système revient <strong>là où il a commencé</strong>, pas qu\'il s\'organise spontanément en quelque chose de nouveau.',
+    card1_title: 'Véhicule intact → Décomposition → Véhicule intact',
+    card1_text: 'Si l\'état initial est le véhicule assemblé, le théorème prédit un retour à cet état. La décomposition est une étape intermédiaire.',
+    card2_title: 'Matières premières → ? → Matières premières',
+    card2_text: 'Si on part d\'un tas de fer et de pétrole brut, le système revient à ce tas. Il ne formera pas spontanément un véhicule qui n\'a jamais existé dans sa trajectoire.',
+    card3_title: 'Le principe clé',
+    card3_text: 'La récurrence <strong>restaure</strong> l\'ordre passé. Elle ne <strong>crée</strong> pas d\'ordre nouveau. Le retour dépend entièrement du point de départ choisi.',
+    s4_title: 'Entropie : loi statistique, pas absolue',
+    s4_p1: 'La deuxième loi de la thermodynamique stipule que l\'entropie d\'un système isolé ne peut qu\'augmenter. Mais c\'est une loi <strong>statistique</strong> : elle décrit ce qui se passe dans l\'écrasante majorité des cas, pas dans la totalité.',
+    s4_p2: 'Le théorème de Poincaré montre qu\'il existe des moments (extraordinairement rares) où l\'entropie diminue spontanément. Ce n\'est pas une violation des lois physiques, c\'est leur conséquence la plus extrême.',
+    s4_highlight: '<strong>Analogie :</strong> Imaginez que vous lanciez un dé un milliard de fois. La loi des grands nombres dit que chaque face apparaîtra environ 1/6 du temps. Mais il n\'est pas <em>impossible</em> d\'obtenir un milliard de six d\'affilée. C\'est juste si improbable que la distinction avec « impossible » n\'a aucune signification pratique.',
+    s5_title: 'Deux visions de l\'entropie',
+    s5_intro: 'Le même phénomène, l\'augmentation de l\'entropie, est décrit par deux cadres théoriques qui semblent se contredire. Pourtant, ils sont tous deux corrects, chacun à son échelle.',
+    split_thermo_tag: 'Thermodynamique classique',
+    split_thermo_title: 'L\'entropie croît. Point final.',
+    split_thermo_p1: 'La deuxième loi est une loi <strong>absolue</strong>. L\'entropie d\'un système isolé ne diminue jamais. Les processus irréversibles le sont véritablement.',
+    split_thermo_li1: 'Loi macroscopique, déterministe',
+    split_thermo_li2: 'Pas de retour possible',
+    split_thermo_li3: 'Flèche du temps absolue',
+    split_thermo_li4: 'Formulée par Clausius (1850)',
+    split_stat_tag: 'Mécanique statistique',
+    split_stat_title: 'L\'entropie croît... probablement.',
+    split_stat_p1: 'La deuxième loi est une loi <strong>statistique</strong>. L\'entropie augmente dans l\'immense majorité des cas, mais des fluctuations et des retours sont techniquement possibles.',
+    split_stat_li1: 'Loi microscopique, probabiliste',
+    split_stat_li2: 'Retour possible (Poincaré)',
+    split_stat_li3: 'Flèche du temps statistique',
+    split_stat_li4: 'Formulée par Boltzmann (1870s)',
+    s6_title: 'Où les théories divergent',
+    s6_intro: 'À court terme, les deux cadres font les mêmes prédictions. C\'est aux échelles de temps extrêmes que la différence apparaît.',
+    s6_graph_title: 'Entropie en fonction du temps (échelle logarithmique)',
+    s6_legend_thermo: 'Thermodynamique classique',
+    s6_legend_stat: 'Mécanique statistique (réalité)',
+    s6_legend_poincare: 'Récurrence de Poincaré',
+    s6_highlight: '<strong>Point clé :</strong> Les deux théories sont identiques pour tout usage pratique. La divergence n\'apparaît qu\'à des échelles de temps qui dépassent l\'existence de l\'univers. C\'est pourquoi la thermodynamique classique reste parfaitement valide pour l\'ingénierie, la chimie, et la vie quotidienne.',
+    s7_title: 'Le débat Zermelo-Boltzmann',
+    s7_intro: 'Cette tension théorique a provoqué l\'un des débats les plus célèbres de la physique du XIXe siècle.',
+    s7_zermelo_years: 'Objection de 1896',
+    s7_zermelo_text: 'Utilise le théorème de Poincaré pour attaquer la théorie cinétique de Boltzmann. Si tout système revient à son état initial, alors l\'augmentation de l\'entropie ne peut pas être une loi fondamentale. La mécanique est réversible, donc la thermodynamique irréversible est incompatible avec elle.',
+    s7_zermelo_quote: '« Un processus irréversible est incompatible avec la mécanique. »',
+    s7_boltzmann_years: 'Réponse de 1896',
+    s7_boltzmann_text: 'Reconnaît que Zermelo a raison mathématiquement, mais argue que c\'est physiquement insignifiant. Le temps de récurrence est si astronomique qu\'aucun observateur ne le verra jamais. La deuxième loi est statistiquement vraie, ce qui suffit pour toute application pratique.',
+    s7_boltzmann_quote: '« Vous devriez attendre longtemps avant d\'observer une telle chose. »',
+    s7_resolution_title: 'La résolution moderne',
+    s7_resolution_text: 'Aujourd\'hui, la physique reconnaît que <strong>les deux avaient raison</strong>. Zermelo avait raison sur le plan mathématique : la récurrence est un théorème. Boltzmann avait raison sur le plan physique : les temps de récurrence sont si colossaux qu\'ils n\'ont aucune pertinence observable. La deuxième loi de la thermodynamique est comprise comme une vérité statistique extraordinairement fiable, pas comme un absolu métaphysique.',
+    s6_axis_time: 'Temps →',
+    s6_axis_entropy: 'Entropie',
+    s6_label_agree: 'Les deux théories sont d\'accord',
+    s6_label_thermo: 'Thermodynamique : maximum permanent',
+    s6_label_stat: 'Méca. stat. : fluctuations rares',
+    s6_label_poincare: 'Récurrence de Poincaré',
+    s6_label_age: 'Âge de l\'univers',
+    footer: 'Récurrence de Poincaré — Simulation éducative'
+  },
+  en: {
+    hero_title: 'Poincaré <span>Recurrence</span> Theorem',
+    hero_sub: 'When physics says the impossible is simply extraordinarily unlikely. An interactive exploration of statistical mechanics.',
+    scroll_hint: '↓ Scroll to explore',
+    s1_title: 'The Theorem',
+    s1_p1: 'In 1890, Henri Poincaré proved a surprising result: in an <strong>isolated</strong> and <strong>conservative</strong> mechanical system (constant energy, finite phase space volume), the system will return arbitrarily close to its initial state, given enough time.',
+    s1_p2: 'In other words: shuffle a deck of cards randomly billions upon billions of times, and one day, the original order will reappear.',
+    s1_highlight: '<strong>Crucial condition:</strong> the system must be perfectly isolated. No particle escapes, no energy enters or leaves. In the real world, almost nothing satisfies this condition.',
+    sim_title: 'Particle Simulation',
+    btn_start: '▶ Start',
+    btn_start_pause: '⏸ Pause',
+    btn_start_resume: '▶ Resume',
+    btn_reset: '↺ Reset',
+    btn_release: '🔓 Open the box',
+    btn_recall: '↩ Recall to circle',
+    btn_release_done: 'Box opened ✓',
+    label_particles: 'Particles',
+    stat_steps: 'Steps elapsed',
+    stat_entropy: 'Entropy (dispersion)',
+    stat_entropy_sub: '0 = perfect order / 1 = max dispersion',
+    stat_distance: 'Distance to initial state',
+    stat_distance_sub: 'Normalized deviation sum',
+    stat_best: 'Best return',
+    stat_proximity: 'Proximity to initial state',
+    stat_similarity: '% similarity',
+    stat_state: 'State',
+    stat_history: 'Proximity history',
+    state_waiting: 'Waiting',
+    state_initial: 'Initial order — stationary',
+    state_paused: 'Paused',
+    state_confined: 'Confined in circle',
+    state_dispersed: 'Dispersed in box',
+    similarity_label: 'Similarity: ',
+    canvas_label: 'Initial state',
+    s2_title: 'Inconceivable timescales',
+    s2_intro: 'The theorem guarantees a return, but says nothing about <em>when</em>. For a macroscopic system, recurrence times exceed all human measure.',
+    t1_title: '~10 particles → a few seconds',
+    t1_text: 'A very small system can return close to its initial state in an observable time. This is what the simulation above demonstrates.',
+    t2_title: '~100 particles → ~10⁵⁰ years',
+    t2_text: 'With just a hundred particles, the recurrence time already exceeds the age of the universe by an unimaginable factor.',
+    t3_title: 'A glass of water (~10²⁵ molecules) → ~10^(10²⁵) years',
+    t3_text: 'A number so large it has billions upon billions of digits itself. No metaphor is sufficient.',
+    t4_title: 'A vehicle (~10²⁸ atoms) → beyond everything',
+    t4_text: 'The time needed for a decomposed vehicle to spontaneously reassemble in an isolated box exceeds all scales. The universe will have long ceased to exist in its current form.',
+    s3_title: 'The question of the initial state',
+    s3_intro: 'A subtle but essential point: the theorem says the system returns <strong>to where it started</strong>, not that it spontaneously organizes into something new.',
+    card1_title: 'Intact vehicle → Decomposition → Intact vehicle',
+    card1_text: 'If the initial state is the assembled vehicle, the theorem predicts a return to that state. Decomposition is an intermediate step.',
+    card2_title: 'Raw materials → ? → Raw materials',
+    card2_text: 'If we start from a pile of iron ore and crude oil, the system returns to that pile. It will not spontaneously form a vehicle that never existed in its trajectory.',
+    card3_title: 'The key principle',
+    card3_text: 'Recurrence <strong>restores</strong> past order. It does not <strong>create</strong> new order. The return depends entirely on the chosen starting point.',
+    s4_title: 'Entropy: statistical law, not absolute',
+    s4_p1: 'The second law of thermodynamics states that the entropy of an isolated system can only increase. But it is a <strong>statistical</strong> law: it describes what happens in the overwhelming majority of cases, not in all of them.',
+    s4_p2: 'Poincaré\'s theorem shows that there are (extraordinarily rare) moments when entropy spontaneously decreases. This is not a violation of physical laws — it is their most extreme consequence.',
+    s4_highlight: '<strong>Analogy:</strong> Imagine rolling a die a billion times. The law of large numbers says each face will appear about 1/6 of the time. But it is not <em>impossible</em> to roll a billion sixes in a row. It is just so improbable that the distinction from "impossible" has no practical meaning.',
+    s5_title: 'Two views of entropy',
+    s5_intro: 'The same phenomenon, the increase of entropy, is described by two theoretical frameworks that seem to contradict each other. Yet both are correct, each at its own scale.',
+    split_thermo_tag: 'Classical thermodynamics',
+    split_thermo_title: 'Entropy increases. Period.',
+    split_thermo_p1: 'The second law is an <strong>absolute</strong> law. The entropy of an isolated system never decreases. Irreversible processes are truly irreversible.',
+    split_thermo_li1: 'Macroscopic, deterministic law',
+    split_thermo_li2: 'No return possible',
+    split_thermo_li3: 'Absolute arrow of time',
+    split_thermo_li4: 'Formulated by Clausius (1850)',
+    split_stat_tag: 'Statistical mechanics',
+    split_stat_title: 'Entropy increases... probably.',
+    split_stat_p1: 'The second law is a <strong>statistical</strong> law. Entropy increases in the vast majority of cases, but fluctuations and returns are technically possible.',
+    split_stat_li1: 'Microscopic, probabilistic law',
+    split_stat_li2: 'Return possible (Poincaré)',
+    split_stat_li3: 'Statistical arrow of time',
+    split_stat_li4: 'Formulated by Boltzmann (1870s)',
+    s6_title: 'Where the theories diverge',
+    s6_intro: 'In the short term, both frameworks make the same predictions. It is only at extreme timescales that the difference appears.',
+    s6_graph_title: 'Entropy as a function of time (logarithmic scale)',
+    s6_legend_thermo: 'Classical thermodynamics',
+    s6_legend_stat: 'Statistical mechanics (reality)',
+    s6_legend_poincare: 'Poincaré recurrence',
+    s6_highlight: '<strong>Key point:</strong> The two theories are identical for all practical purposes. The divergence only appears at timescales that exceed the existence of the universe. This is why classical thermodynamics remains perfectly valid for engineering, chemistry, and everyday life.',
+    s7_title: 'The Zermelo-Boltzmann debate',
+    s7_intro: 'This theoretical tension sparked one of the most famous debates in 19th-century physics.',
+    s7_zermelo_years: 'Objection of 1896',
+    s7_zermelo_text: 'Uses Poincaré\'s theorem to attack Boltzmann\'s kinetic theory. If every system returns to its initial state, then the increase of entropy cannot be a fundamental law. Mechanics is reversible, so irreversible thermodynamics is incompatible with it.',
+    s7_zermelo_quote: '"An irreversible process is incompatible with mechanics."',
+    s7_boltzmann_years: 'Response of 1896',
+    s7_boltzmann_text: 'Acknowledges that Zermelo is mathematically correct, but argues it is physically insignificant. The recurrence time is so astronomical that no observer will ever witness it. The second law is statistically true, which is sufficient for all practical applications.',
+    s7_boltzmann_quote: '"You should wait a very long time before observing such a thing."',
+    s7_resolution_title: 'The modern resolution',
+    s7_resolution_text: 'Today, physics recognizes that <strong>both were right</strong>. Zermelo was right mathematically: recurrence is a theorem. Boltzmann was right physically: recurrence times are so colossal they have no observable relevance. The second law of thermodynamics is understood as an extraordinarily reliable statistical truth, not a metaphysical absolute.',
+    s6_axis_time: 'Time →',
+    s6_axis_entropy: 'Entropy',
+    s6_label_agree: 'Both theories agree',
+    s6_label_thermo: 'Thermodynamics: permanent maximum',
+    s6_label_stat: 'Stat. mech.: rare fluctuations',
+    s6_label_poincare: 'Poincaré recurrence',
+    s6_label_age: 'Age of universe',
+    footer: 'Poincaré Recurrence — Educational Simulation'
+  }
+};
+
+function t(key) { return i18n[currentLang][key] || key; }
+
+function applyLanguage(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+
+  // Update all static i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang][key]) el.innerHTML = i18n[lang][key];
+  });
+
+  // Update buttons based on current state
+  const btnStart = document.getElementById('btnStart');
+  if (running) {
+    btnStart.textContent = t('btn_start_pause');
+  } else if (hasBeenStarted) {
+    btnStart.textContent = t('btn_start_resume');
+  } else {
+    btnStart.textContent = t('btn_start');
+  }
+  document.getElementById('btnReset').textContent = t('btn_reset');
+
+  const btnRelease = document.getElementById('btnRelease');
+  if (released) {
+    btnRelease.textContent = t('btn_recall');
+  } else {
+    btnRelease.textContent = t('btn_release');
+  }
+
+  // Update dynamic state label
+  updateStats();
+  // Redraw canvas (for "État initial" label)
+  draw();
+
+  // Toggle button styles
+  document.getElementById('langFr').classList.toggle('active', lang === 'fr');
+  document.getElementById('langEn').classList.toggle('active', lang === 'en');
+}
+
+document.getElementById('langFr').addEventListener('click', () => applyLanguage('fr'));
+document.getElementById('langEn').addEventListener('click', () => applyLanguage('en'));
+
+// ════════════════════════════════════════
+//  PARTICLE SIMULATION
+// ════════════════════════════════════════
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+let particles = [];
+let initialPositions = [];
+let animId = null;
+let running = false;
+let released = false;
+let hasBeenStarted = false;
+let steps = 0;
+let bestDist = Infinity;
+let proximityHistory = [];
+const MAX_HISTORY = 200;
+let ghostFlash = []; // tracks flash intensity per particle (0 = no flash, 1 = full flash)
+let startTime = 0; // timestamp when simulation started
+
+const PARTICLE_RADIUS = 8;
+const INITIAL_ZONE_RATIO = 0.35;
+const SPEED = 2.5;
+
+function resize() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight || 500;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (!running) draw(); });
+
+function getParticleCount() {
+  return parseInt(document.getElementById('particleSlider').value);
+}
+
+function initParticles() {
+  const count = getParticleCount();
+  particles = [];
+  initialPositions = [];
+  const cx = canvas.width * 0.3;
+  const cy = canvas.height * 0.5;
+  const zone = Math.min(canvas.width, canvas.height) * INITIAL_ZONE_RATIO;
+
+  // Place particles in a nice ordered pattern (grid-like inside circle)
+  const cols = Math.ceil(Math.sqrt(count));
+  const spacing = (zone * 0.7) / cols;
+  const startX = cx - (cols - 1) * spacing * 0.5;
+  const startY = cy - (Math.ceil(count / cols) - 1) * spacing * 0.5;
+  let placed = 0;
+  for (let row = 0; placed < count; row++) {
+    for (let col = 0; col < cols && placed < count; col++) {
+      const x = startX + col * spacing;
+      const y = startY + row * spacing;
+      particles.push({
+        x, y,
+        vx: 0,  // Start stationary!
+        vy: 0,
+        hue: 160 + (placed / count) * 40
+      });
+      initialPositions.push({ x, y });
+      placed++;
+    }
+  }
+  released = false;
+  steps = 0;
+  bestDist = Infinity;
+  proximityHistory = [];
+  ghostFlash = new Array(count).fill(0);
+  updateStats();
+}
+
+function updatePhysics() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const zoneCx = w * 0.3;
+  const zoneCy = h * 0.5;
+  const zoneR = Math.min(w, h) * INITIAL_ZONE_RATIO * 0.5 - PARTICLE_RADIUS;
+
+  for (let p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (released) {
+      // Bounce off box walls
+      if (p.x - PARTICLE_RADIUS < 0) { p.x = PARTICLE_RADIUS; p.vx *= -1; }
+      if (p.x + PARTICLE_RADIUS > w) { p.x = w - PARTICLE_RADIUS; p.vx *= -1; }
+      if (p.y - PARTICLE_RADIUS < 0) { p.y = PARTICLE_RADIUS; p.vy *= -1; }
+      if (p.y + PARTICLE_RADIUS > h) { p.y = h - PARTICLE_RADIUS; p.vy *= -1; }
+    } else {
+      // Confine inside circular zone - reflect off circle boundary
+      const dx = p.x - zoneCx;
+      const dy = p.y - zoneCy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > zoneR) {
+        // Normal vector pointing inward
+        const nx = dx / dist;
+        const ny = dy / dist;
+        // Place particle back on boundary
+        p.x = zoneCx + nx * zoneR;
+        p.y = zoneCy + ny * zoneR;
+        // Reflect velocity off circle wall
+        const dot = p.vx * nx + p.vy * ny;
+        p.vx -= 2 * dot * nx;
+        p.vy -= 2 * dot * ny;
+      }
+    }
+  }
+
+  // Simple elastic collisions
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[j].x - particles[i].x;
+      const dy = particles[j].y - particles[i].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < PARTICLE_RADIUS * 2) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const dvx = particles[i].vx - particles[j].vx;
+        const dvy = particles[i].vy - particles[j].vy;
+        const dvn = dvx * nx + dvy * ny;
+        if (dvn > 0) {
+          particles[i].vx -= dvn * nx;
+          particles[i].vy -= dvn * ny;
+          particles[j].vx += dvn * nx;
+          particles[j].vy += dvn * ny;
+        }
+        // Separate
+        const overlap = PARTICLE_RADIUS * 2 - dist;
+        particles[i].x -= nx * overlap * 0.5;
+        particles[i].y -= ny * overlap * 0.5;
+        particles[j].x += nx * overlap * 0.5;
+        particles[j].y += ny * overlap * 0.5;
+      }
+    }
+  }
+
+  steps++;
+
+  // Check if any particle is near its initial position -> trigger flash
+  const flashThreshold = PARTICLE_RADIUS * 2.5;
+  for (let i = 0; i < particles.length; i++) {
+    const dx = particles[i].x - initialPositions[i].x;
+    const dy = particles[i].y - initialPositions[i].y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < flashThreshold) {
+      ghostFlash[i] = 1; // full flash
+    } else {
+      // Decay flash
+      ghostFlash[i] = Math.max(0, ghostFlash[i] - 0.04);
+    }
+  }
+}
+
+function computeEntropy() {
+  // Divide canvas into grid, measure spread
+  const gridSize = 6;
+  const cellW = canvas.width / gridSize;
+  const cellH = canvas.height / gridSize;
+  const bins = new Array(gridSize * gridSize).fill(0);
+
+  for (let p of particles) {
+    const gx = Math.min(gridSize - 1, Math.floor(p.x / cellW));
+    const gy = Math.min(gridSize - 1, Math.floor(p.y / cellH));
+    bins[gy * gridSize + gx]++;
+  }
+
+  const n = particles.length;
+  if (n === 0) return 0;
+  let entropy = 0;
+  const maxEntropy = Math.log(gridSize * gridSize);
+  for (let b of bins) {
+    if (b > 0) {
+      const p = b / n;
+      entropy -= p * Math.log(p);
+    }
+  }
+  return maxEntropy > 0 ? entropy / maxEntropy : 0;
+}
+
+function computeDistance() {
+  if (particles.length === 0) return 0;
+  // Always normalize by the same reference: the zone diameter
+  // This way opening the box doesn't change the scale
+  const zoneSize = Math.min(canvas.width, canvas.height) * INITIAL_ZONE_RATIO;
+  let total = 0;
+  for (let i = 0; i < particles.length; i++) {
+    const dx = particles[i].x - initialPositions[i].x;
+    const dy = particles[i].y - initialPositions[i].y;
+    total += Math.sqrt(dx * dx + dy * dy);
+  }
+  // Average distance per particle, normalized by zone size
+  return (total / particles.length) / zoneSize;
+}
+
+function updateStats() {
+  document.getElementById('stepCount').textContent = steps.toLocaleString('fr-FR');
+  const ent = computeEntropy();
+  document.getElementById('entropyVal').textContent = ent.toFixed(3);
+  const dist = computeDistance();
+  document.getElementById('distVal').textContent = dist.toFixed(4);
+
+  // Proximity as percentage using exponential decay
+  // dist=0 -> 100%, dist=0.5 -> ~37%, dist=1 -> ~13%, dist=2 -> ~2%
+  const proximity = Math.exp(-dist * 3) * 100;
+  document.getElementById('proximityBar').style.width = proximity + '%';
+  document.getElementById('proximityPct').textContent = proximity.toFixed(1);
+
+  // Color the bar based on proximity
+  const bar = document.getElementById('proximityBar');
+  if (proximity > 80) {
+    bar.style.background = 'var(--accent)';
+  } else if (proximity > 40) {
+    bar.style.background = 'var(--orange)';
+  } else {
+    bar.style.background = 'var(--red)';
+  }
+
+  let newBest = false;
+  const elapsed = performance.now() - startTime;
+  if (dist < bestDist && elapsed > 1000) {
+    newBest = (bestDist !== Infinity);
+    bestDist = dist;
+  }
+  const bestProx = bestDist === Infinity ? '--' : (Math.exp(-bestDist * 3) * 100).toFixed(1) + '%';
+  document.getElementById('bestReturn').textContent = bestDist === Infinity ? '--' : bestDist.toFixed(4);
+  document.getElementById('bestReturnPct').textContent = bestDist === Infinity ? '' : t('similarity_label') + bestProx;
+
+  // Flash on new best
+  if (newBest) {
+    const fb = document.getElementById('flashBlock');
+    fb.style.background = 'rgba(110,231,183,0.15)';
+    setTimeout(() => { fb.style.background = ''; }, 500);
+  }
+
+  // Track history for graph
+  if (steps % 2 === 0 && steps > 0) {
+    proximityHistory.push(proximity);
+    if (proximityHistory.length > MAX_HISTORY) proximityHistory.shift();
+    drawGraph();
+  }
+
+  if (!running) {
+    if (!hasBeenStarted) {
+      document.getElementById('stateLabel').textContent = t('state_initial');
+      document.getElementById('stateLabel').style.color = 'var(--accent)';
+    } else {
+      document.getElementById('stateLabel').textContent = t('state_paused');
+      document.getElementById('stateLabel').style.color = 'var(--text-muted)';
+    }
+  } else if (!released) {
+    document.getElementById('stateLabel').textContent = t('state_confined');
+    document.getElementById('stateLabel').style.color = 'var(--accent)';
+  } else {
+    document.getElementById('stateLabel').textContent = t('state_dispersed');
+    document.getElementById('stateLabel').style.color = 'var(--orange)';
+  }
+}
+
+function drawGraph() {
+  const gc = document.getElementById('graphCanvas');
+  const gctx = gc.getContext('2d');
+  gc.width = gc.clientWidth * 2;
+  gc.height = gc.clientHeight * 2;
+  gctx.scale(2, 2);
+  const w = gc.clientWidth;
+  const h = gc.clientHeight;
+
+  gctx.clearRect(0, 0, w, h);
+
+  // Background grid line at 50%
+  gctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  gctx.lineWidth = 0.5;
+  gctx.beginPath();
+  gctx.moveTo(0, h * 0.5);
+  gctx.lineTo(w, h * 0.5);
+  gctx.stroke();
+
+  if (proximityHistory.length < 2) return;
+
+  // Draw the proximity curve
+  gctx.beginPath();
+  for (let i = 0; i < proximityHistory.length; i++) {
+    const x = (i / (MAX_HISTORY - 1)) * w;
+    const y = h - (proximityHistory[i] / 100) * h;
+    if (i === 0) gctx.moveTo(x, y);
+    else gctx.lineTo(x, y);
+  }
+  gctx.strokeStyle = 'rgba(167,139,250,0.7)';
+  gctx.lineWidth = 1.5;
+  gctx.stroke();
+
+  // Fill under curve
+  const lastX = ((proximityHistory.length - 1) / (MAX_HISTORY - 1)) * w;
+  gctx.lineTo(lastX, h);
+  gctx.lineTo(0, h);
+  gctx.closePath();
+  gctx.fillStyle = 'rgba(167,139,250,0.08)';
+  gctx.fill();
+
+  // Mark best point
+  if (proximityHistory.length > 0) {
+    const maxVal = Math.max(...proximityHistory);
+    const maxIdx = proximityHistory.lastIndexOf(maxVal);
+    const mx = (maxIdx / (MAX_HISTORY - 1)) * w;
+    const my = h - (maxVal / 100) * h;
+    gctx.beginPath();
+    gctx.arc(mx, my, 3, 0, Math.PI * 2);
+    gctx.fillStyle = 'var(--accent)';
+    gctx.fill();
+  }
+}
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#07070c';
+  ctx.fillRect(0, 0, w, h);
+
+  // Draw initial zone
+  const cx = w * 0.3;
+  const cy = h * 0.5;
+  const zone = Math.min(w, h) * INITIAL_ZONE_RATIO;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, zone * 0.5, 0, Math.PI * 2);
+  if (released) {
+    ctx.strokeStyle = 'rgba(110,231,183,0.15)';
+    ctx.setLineDash([4, 4]);
+  } else {
+    ctx.strokeStyle = 'rgba(110,231,183,0.5)';
+    ctx.setLineDash([]);
+    // Fill the zone slightly
+    ctx.fillStyle = 'rgba(110,231,183,0.03)';
+    ctx.fill();
+  }
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Label
+  ctx.fillStyle = 'rgba(110,231,183,0.25)';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(t('canvas_label'), cx, cy - zone * 0.5 - 10);
+
+  // Draw ghost positions (initial positions) when particles have moved
+  if (hasBeenStarted && steps > 5) {
+    for (let i = 0; i < initialPositions.length; i++) {
+      const flash = ghostFlash[i] || 0;
+      const ix = initialPositions[i].x;
+      const iy = initialPositions[i].y;
+
+      // Flash glow ring
+      if (flash > 0.01) {
+        const glowR = PARTICLE_RADIUS * (2 + flash * 3);
+        const glowGrad = ctx.createRadialGradient(ix, iy, PARTICLE_RADIUS * 0.5, ix, iy, glowR);
+        glowGrad.addColorStop(0, `rgba(110,231,183,${0.5 * flash})`);
+        glowGrad.addColorStop(0.5, `rgba(110,231,183,${0.15 * flash})`);
+        glowGrad.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(ix, iy, glowR, 0, Math.PI * 2);
+        ctx.fillStyle = glowGrad;
+        ctx.fill();
+      }
+
+      // Ghost circle (brighter when flashing)
+      const baseAlpha = released ? 0.12 : 0.2;
+      const alpha = baseAlpha + flash * 0.6;
+      ctx.beginPath();
+      ctx.arc(ix, iy, PARTICLE_RADIUS + flash * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(110,231,183,${alpha})`;
+      ctx.fill();
+
+      // Border
+      ctx.beginPath();
+      ctx.arc(ix, iy, PARTICLE_RADIUS + flash * 2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(110,231,183,${0.15 + flash * 0.6})`;
+      ctx.lineWidth = 0.5 + flash * 1.5;
+      ctx.stroke();
+
+      // Number on ghost (only if few enough particles to read)
+      if (particles.length <= 30) {
+        ctx.fillStyle = `rgba(110,231,183,${0.4 + flash * 0.6})`;
+        ctx.font = `bold ${Math.max(8, PARTICLE_RADIUS - 1)}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i + 1, ix, iy);
+      }
+    }
+  }
+
+  // Draw particles
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    // Glow
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, PARTICLE_RADIUS * 3);
+    grad.addColorStop(0, `hsla(${p.hue}, 80%, 65%, 0.3)`);
+    grad.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, PARTICLE_RADIUS * 3, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Particle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, PARTICLE_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${p.hue}, 80%, 65%)`;
+    ctx.fill();
+
+    // Number on particle (only if few enough to read)
+    if (particles.length <= 30) {
+      ctx.fillStyle = '#07070c';
+      ctx.font = `bold ${Math.max(8, PARTICLE_RADIUS - 1)}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(i + 1, p.x, p.y);
+    }
+
+    // Line to initial pos when moving
+    if (hasBeenStarted && steps > 5) {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(initialPositions[i].x, initialPositions[i].y);
+      ctx.strokeStyle = `hsla(${p.hue}, 80%, 65%, 0.08)`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  // Box border
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, w - 2, h - 2);
+}
+
+function loop() {
+  updatePhysics();
+  draw();
+  if (steps % 3 === 0) updateStats();
+  animId = requestAnimationFrame(loop);
+}
+
+// ── Controls ──
+
+document.getElementById('btnStart').addEventListener('click', function() {
+  if (running) {
+    running = false;
+    cancelAnimationFrame(animId);
+    this.textContent = t('btn_start_resume');
+    this.classList.remove('active');
+    updateStats();
+  } else {
+    if (particles.length === 0) initParticles();
+    // First time starting: give particles random velocities
+    if (!hasBeenStarted) {
+      hasBeenStarted = true;
+      startTime = performance.now();
+      for (let p of particles) {
+        const angle = Math.random() * Math.PI * 2;
+        p.vx = Math.cos(angle) * SPEED;
+        p.vy = Math.sin(angle) * SPEED;
+      }
+      // Reset best/history since now they actually move
+      bestDist = Infinity;
+      proximityHistory = [];
+    }
+    running = true;
+    this.textContent = t('btn_start_pause');
+    this.classList.add('active');
+    loop();
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', function() {
+  running = false;
+  hasBeenStarted = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('btnStart').textContent = t('btn_start');
+  document.getElementById('btnStart').classList.remove('active');
+  const btnRelease = document.getElementById('btnRelease');
+  btnRelease.textContent = t('btn_release');
+  btnRelease.classList.remove('active');
+  initParticles();
+  draw();
+  updateStats();
+});
+
+document.getElementById('btnRelease').addEventListener('click', function() {
+  if (!released) {
+    released = true;
+    this.textContent = t('btn_recall');
+    this.classList.add('active');
+    updateStats();
+  } else {
+    // Recall: re-confine particles into the circle
+    released = false;
+    this.textContent = t('btn_release');
+    this.classList.remove('active');
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const zoneCx = w * 0.3;
+    const zoneCy = h * 0.5;
+    const zoneR = Math.min(w, h) * INITIAL_ZONE_RATIO * 0.5 - PARTICLE_RADIUS;
+
+    // Push any particle outside the circle back inside
+    for (let p of particles) {
+      const dx = p.x - zoneCx;
+      const dy = p.y - zoneCy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > zoneR) {
+        // Place on a random spot inside the circle, keep velocity direction
+        const angle = Math.atan2(dy, dx);
+        const newR = Math.random() * zoneR * 0.8;
+        p.x = zoneCx + Math.cos(angle) * newR;
+        p.y = zoneCy + Math.sin(angle) * newR;
+      }
+      // Keep speed but cap it
+      const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      if (speed > SPEED) {
+        p.vx = (p.vx / speed) * SPEED;
+        p.vy = (p.vy / speed) * SPEED;
+      }
+    }
+    updateStats();
+  }
+});
+
+document.getElementById('particleSlider').addEventListener('input', function() {
+  document.getElementById('particleCountLabel').textContent = this.value;
+  if (!running) {
+    initParticles();
+    draw();
+  }
+});
+
+// Init
+initParticles();
+draw();
+updateStats();
+
+// ════════════════════════════════════════
+//  ENTROPY TIMELINE GRAPH
+// ════════════════════════════════════════
+function drawEntropyTimeline() {
+  const tc = document.getElementById('entropyTimeline');
+  if (!tc) return;
+  const tctx = tc.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  tc.width = tc.clientWidth * dpr;
+  tc.height = tc.clientHeight * dpr;
+  tctx.scale(dpr, dpr);
+  const w = tc.clientWidth;
+  const h = tc.clientHeight;
+
+  const pad = { top: 20, right: 20, bottom: 35, left: 55 };
+  const gw = w - pad.left - pad.right;
+  const gh = h - pad.top - pad.bottom;
+
+  tctx.clearRect(0, 0, w, h);
+
+  // Background
+  tctx.fillStyle = 'rgba(7,7,12,0.5)';
+  tctx.beginPath();
+  tctx.roundRect(0, 0, w, h, 8);
+  tctx.fill();
+
+  // Grid lines
+  tctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  tctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * gh;
+    tctx.beginPath();
+    tctx.moveTo(pad.left, y);
+    tctx.lineTo(pad.left + gw, y);
+    tctx.stroke();
+  }
+
+  // Phases: we divide the timeline into regions
+  // 0-30%: both agree (entropy rises)
+  // 30-55%: both at max (agree)
+  // 55%: "age of universe" marker
+  // 55-100%: divergence zone
+  const phases = [0, 0.3, 0.55, 1.0];
+
+  // Zone labels
+  const ageLine = pad.left + 0.55 * gw;
+
+  // Age of universe dashed line
+  tctx.save();
+  tctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  tctx.lineWidth = 1;
+  tctx.setLineDash([4, 4]);
+  tctx.beginPath();
+  tctx.moveTo(ageLine, pad.top);
+  tctx.lineTo(ageLine, pad.top + gh);
+  tctx.stroke();
+  tctx.setLineDash([]);
+  tctx.restore();
+
+  // Age label
+  tctx.fillStyle = 'rgba(255,255,255,0.25)';
+  tctx.font = '9px "JetBrains Mono", monospace';
+  tctx.textAlign = 'center';
+  tctx.fillText(t('s6_label_age'), ageLine, pad.top + gh + 28);
+
+  // "Both agree" zone tint
+  tctx.fillStyle = 'rgba(255,255,255,0.015)';
+  tctx.fillRect(pad.left, pad.top, 0.55 * gw, gh);
+
+  // Agreement label
+  tctx.fillStyle = 'rgba(255,255,255,0.12)';
+  tctx.font = '9px "JetBrains Mono", monospace';
+  tctx.textAlign = 'center';
+  tctx.fillText(t('s6_label_agree'), pad.left + 0.275 * gw, pad.top + 14);
+
+  // ── Draw thermodynamic line (orange): rises then flat forever ──
+  tctx.beginPath();
+  const thermoPoints = 200;
+  for (let i = 0; i <= thermoPoints; i++) {
+    const px = i / thermoPoints;
+    const x = pad.left + px * gw;
+    let entropyNorm;
+    if (px < 0.25) {
+      // Rise phase: 1 - e^(-kx)
+      entropyNorm = 1 - Math.exp(-px * 16);
+    } else {
+      entropyNorm = 1.0; // Flat at max forever
+    }
+    const y = pad.top + gh - entropyNorm * gh * 0.85;
+    if (i === 0) tctx.moveTo(x, y);
+    else tctx.lineTo(x, y);
+  }
+  tctx.strokeStyle = 'rgba(245,158,11,0.7)';
+  tctx.lineWidth = 2.5;
+  tctx.stroke();
+
+  // Label
+  tctx.fillStyle = 'rgba(245,158,11,0.5)';
+  tctx.font = '8px "JetBrains Mono", monospace';
+  tctx.textAlign = 'left';
+  tctx.fillText(t('s6_label_thermo'), pad.left + 0.6 * gw, pad.top + gh * 0.12);
+
+  // ── Draw statistical mechanics line (green): rises, then tiny fluctuations ──
+  tctx.beginPath();
+  const statPoints = 400;
+  for (let i = 0; i <= statPoints; i++) {
+    const px = i / statPoints;
+    const x = pad.left + px * gw;
+    let entropyNorm;
+    if (px < 0.25) {
+      entropyNorm = 1 - Math.exp(-px * 16);
+    } else if (px < 0.55) {
+      // Tiny fluctuations
+      entropyNorm = 1.0 - 0.008 * Math.sin(px * 120) * Math.sin(px * 47);
+    } else {
+      // Slightly larger rare fluctuations in the far future
+      const fluct = 0.025 * Math.sin(px * 80) * Math.sin(px * 33) + 0.015 * Math.sin(px * 200);
+      entropyNorm = 1.0 - Math.abs(fluct);
+    }
+    const y = pad.top + gh - entropyNorm * gh * 0.85;
+    if (i === 0) tctx.moveTo(x, y);
+    else tctx.lineTo(x, y);
+  }
+  tctx.strokeStyle = 'rgba(110,231,183,0.7)';
+  tctx.lineWidth = 2;
+  tctx.stroke();
+
+  // Label
+  tctx.fillStyle = 'rgba(110,231,183,0.5)';
+  tctx.fillText(t('s6_label_stat'), pad.left + 0.6 * gw, pad.top + gh * 0.22);
+
+  // ── Draw Poincaré recurrence dip (purple): dramatic drop far in future ──
+  const poincareX1 = pad.left + 0.82 * gw;
+  const poincareX2 = pad.left + 0.92 * gw;
+  const poincareXmid = (poincareX1 + poincareX2) / 2;
+  const poincareYtop = pad.top + gh * 0.15;
+  const poincareYbot = pad.top + gh * 0.78;
+
+  // Glow area
+  tctx.save();
+  const poincGrad = tctx.createRadialGradient(poincareXmid, poincareYbot * 0.7, 5, poincareXmid, poincareYbot * 0.7, gw * 0.12);
+  poincGrad.addColorStop(0, 'rgba(167,139,250,0.12)');
+  poincGrad.addColorStop(1, 'transparent');
+  tctx.fillStyle = poincGrad;
+  tctx.fillRect(poincareX1 - 20, pad.top, poincareX2 - poincareX1 + 40, gh);
+  tctx.restore();
+
+  // The dip curve
+  tctx.beginPath();
+  tctx.moveTo(poincareX1, poincareYtop);
+  tctx.bezierCurveTo(
+    poincareX1 + 10, poincareYbot,
+    poincareX2 - 10, poincareYbot,
+    poincareX2, poincareYtop
+  );
+  tctx.strokeStyle = 'rgba(167,139,250,0.8)';
+  tctx.lineWidth = 2.5;
+  tctx.setLineDash([6, 3]);
+  tctx.stroke();
+  tctx.setLineDash([]);
+
+  // Arrow pointing to the dip
+  tctx.fillStyle = 'rgba(167,139,250,0.6)';
+  tctx.font = '8px "JetBrains Mono", monospace';
+  tctx.textAlign = 'center';
+  tctx.fillText(t('s6_label_poincare'), poincareXmid, poincareYbot + 16);
+
+  // ── Axes ──
+  tctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  tctx.lineWidth = 1;
+  tctx.beginPath();
+  tctx.moveTo(pad.left, pad.top);
+  tctx.lineTo(pad.left, pad.top + gh);
+  tctx.lineTo(pad.left + gw, pad.top + gh);
+  tctx.stroke();
+
+  // Axis labels
+  tctx.fillStyle = 'rgba(255,255,255,0.3)';
+  tctx.font = '10px "JetBrains Mono", monospace';
+  tctx.textAlign = 'center';
+  tctx.fillText(t('s6_axis_time'), pad.left + gw / 2, pad.top + gh + 28);
+
+  tctx.save();
+  tctx.translate(14, pad.top + gh / 2);
+  tctx.rotate(-Math.PI / 2);
+  tctx.textAlign = 'center';
+  tctx.fillText(t('s6_axis_entropy'), 0, 0);
+  tctx.restore();
+}
+
+// Draw on load and resize
+drawEntropyTimeline();
+window.addEventListener('resize', drawEntropyTimeline);
+
+// Redraw when language changes (update the applyLanguage function)
+const _origApply = applyLanguage;
+applyLanguage = function(lang) {
+  _origApply(lang);
+  drawEntropyTimeline();
+};
+</script>
+
+</body>
+</html>
